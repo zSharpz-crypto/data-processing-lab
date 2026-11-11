@@ -9,37 +9,46 @@ with open(os.path.join(__location__, 'Cities.csv')) as f:
     for r in rows:
         cities.append(dict(r))
 
+
+def filter_items(condition, dict_list):
+    result = []
+    for item in dict_list:
+        if condition(item):
+            result.append(item)
+    return result
+
+
+def aggregate(aggregation_key, aggregation_function, dict_list):
+    values = []
+    for item in dict_list:
+        values.append(item[aggregation_key])
+    return aggregation_function(values)
+
+
 for city in cities[:5]:
     print(city)
 
 print("The average temperature of all the cities:")
-temps = []
-for city in cities:
-    temps.append(float(city['temperature']))
-print(sum(temps)/len(temps))
+print(aggregate('temperature',
+                lambda t: sum(float(x) for x in t) / len(t),
+                cities))
 print()
 
-print("The average temperature of all the cities:")
-temps = [float(city['temperature']) for city in cities]
-print(sum(temps)/len(temps))
-print()
+for city in filter_items(lambda c: c['country'] == 'Germany', cities):
+    print(city)
 
-for city in cities:
-    if city['country'] == 'Germany':
-        print(city)
+for city in filter_items(
+        lambda c: c['country'] == 'Spain' and float(c['temperature']) > 12,
+        cities):
+    print(city)
 
-for city in cities:
-    if city['country'] == 'Spain' and float(city['temperature']) > 12:
-        print(city)
+print(aggregate('country', lambda c: len(set(c)), cities))
 
+german_cities = filter_items(lambda c: c['country'] == 'Germany', cities)
+print(aggregate('temperature',
+                lambda t: sum(float(x) for x in t) / len(t),
+                german_cities))
 
-countries = set()
-for city in cities:
-    countries.add(city['country'])
-print(len(countries))
-
-german_temps = [float(city['temperature']) for city in cities if city['country'] == 'Germany']
-print(sum(german_temps)/len(german_temps))
-
-italy_temps = [float(city['temperature']) for city in cities if city['country'] == 'Italy']
-print(max(italy_temps))
+italian_cities = filter_items(lambda c: c['country'] == 'Italy', cities)
+print(aggregate('temperature', lambda t: max(float(x) for x in t),
+                italian_cities))
