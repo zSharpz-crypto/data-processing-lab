@@ -1,54 +1,80 @@
 import csv, os
 
-__location__ = os.path.realpath(
-    os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
-cities = []
-with open(os.path.join(__location__, 'Cities.csv')) as f:
-    rows = csv.DictReader(f)
-    for r in rows:
-        cities.append(dict(r))
+class DataLoader:
+    def __init__(self, base_path=None):
+        self.base_path = base_path or os.path.dirname(os.path.abspath(__file__))
 
-
-def filter_items(condition, dict_list):
-    result = []
-    for item in dict_list:
-        if condition(item):
-            result.append(item)
-    return result
+    def load_csv(self, filename):
+        with open(os.path.join(self.base_path, filename)) as f:
+            rows = [dict(r) for r in csv.DictReader(f)]
+        return Table(filename, rows)
 
 
-def aggregate(aggregation_key, aggregation_function, dict_list):
-    values = []
-    for item in dict_list:
-        values.append(item[aggregation_key])
-    return aggregation_function(values)
+class Table:
+    def __init__(self, table_name, table):
+        self.table_name = table_name
+        self.table = table
 
+    def __len__(self):
+        return len(self.table)
+
+    def __iter__(self):
+        return iter(self.table)
+
+    def __getitem__(self, index):
+        return self.table[index]
+
+    def __str__(self):
+        return f"Table({self.table_name}, {len(self.table)} rows)"
+
+    def filter(self, condition):
+        result = []
+        for item in self.table:
+            if condition(item):
+                result.append(item)
+        return Table(self.table_name, result)
+
+    def aggregate(self, aggregation_key, aggregation_function):
+        values = []
+        for item in self.table:
+            values.append(item[aggregation_key])
+        return aggregation_function(values)
+
+    def to_list(self):
+        return list(self.table)
+
+
+def mean(values):
+    nums = [float(v) for v in values]
+    return sum(nums) / len(nums)
+
+
+def maximum(values):
+    return max(float(v) for v in values)
+
+
+loader = DataLoader()
+cities = loader.load_csv('Cities.csv')
 
 for city in cities[:5]:
     print(city)
 
 print("The average temperature of all the cities:")
-print(aggregate('temperature',
-                lambda t: sum(float(x) for x in t) / len(t),
-                cities))
+print(cities.aggregate('temperature', mean))
 print()
 
-for city in filter_items(lambda c: c['country'] == 'Germany', cities):
+for city in cities.filter(lambda c: c['country'] == 'Germany'):
     print(city)
 
-for city in filter_items(
-        lambda c: c['country'] == 'Spain' and float(c['temperature']) > 12,
-        cities):
+for city in cities.filter(
+        lambda c: c['country'] == 'Spain' and float(c['temperature']) > 12):
     print(city)
 
-print(aggregate('country', lambda c: len(set(c)), cities))
+print(cities.aggregate('country', lambda c: len(set(c))))
 
-german_cities = filter_items(lambda c: c['country'] == 'Germany', cities)
-print(aggregate('temperature',
-                lambda t: sum(float(x) for x in t) / len(t),
-                german_cities))
+german_cities = cities.filter(lambda c: c['country'] == 'Germany')
+print(german_cities.aggregate('temperature', mean))
 
-italian_cities = filter_items(lambda c: c['country'] == 'Italy', cities)
-print(aggregate('temperature', lambda t: max(float(x) for x in t),
-                italian_cities))
+italian_cities = cities.filter(lambda c: c['country'] == 'Italy')
+print(italian_cities.aggregate('temperature', maximum))
